@@ -80,8 +80,8 @@ G4InverseCompton::G4InverseCompton(G4LogicalVolume* anEnvelope,
   fAlphaPlate = 100.;
   fAlphaGas = 40.;
 
-  fTheMinEnergyTR = CLHEP::keV * 27.; //  1.; // 
-  fTheMaxEnergyTR = CLHEP::keV * 30.; // 30.; //
+  fTheMinEnergyTR = CLHEP::keV * 1.; //  1.; // min не рассеянного
+  fTheMaxEnergyTR = CLHEP::keV * 30.; // 30.; //4gamma^2*E_p
 
   fTheMinAngle    = 1.e-8;  //
   fTheMaxAngle    = 4.e-4;
@@ -358,7 +358,8 @@ void G4InverseCompton::BuildEnergyTable()
     {
       // Legendre96 or Legendre10
 
-      energySum += /* radiatorCof * fCofTR * вынести константы сюда*/
+      energySum += 
+      /* radiatorCof * fCofTR * вынести константы сюда*/
 	
 	// integral.Legendre10(this, &G4InverseCompton::SpectralXTRdEdx,
 	

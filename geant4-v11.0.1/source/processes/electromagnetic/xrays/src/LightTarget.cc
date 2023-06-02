@@ -62,21 +62,26 @@ void LightTarget::ProcessDescription(std::ostream& out) const
 ///////////////////////////////////////////////////////////////////////////
 G4double LightTarget::SpectralXTRdEdx(G4double E_g)
 {
-  G4double r_e = 1; // 2.8179403262 * pow(10, -15) * CLHEP::m; // радиус электрона
-  // G4double Pt = 1.;
-  // G4double tau = 0;
+  // G4double CC = 2.9979 * pow(10, 10);  // cm/s
+  // G4double CM = 511000 / (CC * CC);
+  // G4double PLANCK = 6.58212 * pow(10, -16); // eV*s
+  // G4double LAMBDA = 1.03 * pow(10, -4);  // cm
   G4double mc2 = 511000.0 * CLHEP::eV;
-  // G4double E_p = 2.0 * CLHEP::eV;
-  G4double E_p = 30000.0 * CLHEP::eV; // transformed laser photon energy should be there
-  G4double theta = acos(1. - mc2/E_g + mc2/E_p);
-  G4double sz2 = cos(theta);
-
+  G4double r_e = 2.8179403262 * pow(10, -15) * 100 * CLHEP::m; // радиус электрона
   G4double gammaCM = 60;
   G4double betaCM = sqrt(1. - 1./gammaCM/gammaCM);
+
+  G4double Ep1 = 2.0 * CLHEP::eV;
+  // // G4double Ep1 = PLANCK * 2 * pi * CC / LAMBDA;
+  // G4double E_p = PLANCK * 2 * pi * CC / LAMBDA * CLHEP::eV;
+  G4double Ep2 = Ep1 * gammaCM * (1. + betaCM);
+  G4double E_p = Ep2;
+  G4double sz2 = 1. - mc2/E_g + mc2/E_p;
+
+
   E_g = E_g*gammaCM*(1. + betaCM*sz2);
 
   G4double f = ( (mc2/E_p-mc2/E_g) * (mc2/E_p-mc2/E_g) + 2.0 * (mc2/E_p-mc2/E_g) + E_p/E_g + E_g/E_p ) / (2.0 + 2.0 * E_p/mc2);
-
 
   return pi * r_e * r_e * mc2 / E_p * E_p  * (2.0 + 2 * E_p / mc2) * f;
 
