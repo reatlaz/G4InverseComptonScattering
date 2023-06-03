@@ -357,18 +357,20 @@ void G4InverseCompton::BuildEnergyTable()
     for(iTR = fBinTR - 2; iTR >= 0; --iTR)
     {
       // Legendre96 or Legendre10
-
-      energySum += 
+      
       /* radiatorCof * fCofTR * вынести константы сюда*/
 	
 	// integral.Legendre10(this, &G4InverseCompton::SpectralXTRdEdx,
-	
-                   integral.Legendre96(this, &G4InverseCompton::SpectralXTRdEdx,
-				       
-                                       energyVector->GetLowEdgeEnergy(iTR),
-                                       energyVector->GetLowEdgeEnergy(iTR + 1));
+                  //  integral.Legendre96(this, &G4InverseCompton::SpectralXTRdEdx,
+       
+                  //                      energyVector->GetLowEdgeEnergy(iTR),
+                  //                      energyVector->GetLowEdgeEnergy(iTR + 1));
 
-      G4cout << ", energySum=" << energySum << G4endl;
+      G4double energy = energyVector->GetLowEdgeEnergy(iTR);
+      G4double energyNext = energyVector->GetLowEdgeEnergy(iTR + 1);
+      
+      energySum += G4InverseCompton::SpectralXTRdEdx(iTR) * (energyNext - energy);
+      G4cout << "energySum=" << energySum << G4endl;
       energyVector->PutValue(iTR, energySum / fTotalDist);
     }
     iPlace = iTkin;
@@ -785,7 +787,7 @@ G4VParticleChange* G4InverseCompton::PostStepDoIt(const G4Track& aTrack,
 
       if(verboseLevel > 1)
       {
-        G4cout << "energyTR = " << energyTR / keV << " keV" << G4endl;
+        G4cout << "energyIC = " << energyTR / keV << " keV" << G4endl;
       }
       if(fAngleRadDistr)
       {
@@ -796,7 +798,16 @@ G4VParticleChange* G4InverseCompton::PostStepDoIt(const G4Track& aTrack,
           theta = 0.;
       }
       else
-        theta = std::fabs(G4RandGauss::shoot(0.0, pi / gamma));
+      // theta = std::fabs(G4RandGauss::shoot(0.0, pi / gamma));
+      {
+        G4double gammaCM = 60;
+        G4double betaCM = sqrt(1. - 1./gammaCM/gammaCM);
+        G4double Ep1 = 2.0 * CLHEP::eV;
+        G4double Ep2 = Ep1 * gammaCM * (1. + betaCM);
+        G4double E_p = Ep2;
+        G4double E_g = energyTR;
+        theta = pi - acos((E_p/E_g*(1. + betaCM) - 1.) / betaCM);
+      }
 
       if(theta >= 0.1)
         theta = 0.1;
@@ -878,30 +889,38 @@ G4double G4InverseCompton::SpectralAngleXTRdEdx(G4double varAngle)
 
 /////////////////////////////////////////////////////////////////////////
 // For second integration over energy
-G4double G4InverseCompton::SpectralXTRdEdx(G4double energy)
+G4double G4InverseCompton::SpectralXTRdEdx(G4double indexD) //G4int
 {
-  G4int i;
-  static constexpr G4int iMax = 8;
-  G4double angleSum           = 0.0;
+  // G4double CC = 2.9979 * pow(10, 10);  // cm/s
+  // G4double CM = 511000 / (CC * CC);
+  // G4double PLANCK = 6.58212 * pow(10, -16); // eV*s
+  // G4double LAMBDA = 1.03 * pow(10, -4);  // cm
+   G4cout << "LightTarget::SpectralXTRdEdx(G4double indexD)" << G4endl;
+  G4int index = int(indexD);
+  G4double mc2 = 511000.0 * CLHEP::eV;
+  G4double r_e = 2.8179403262 * pow(10, -6) * CLHEP::m; // радиус электрона
+  G4double gammaCM = 60;
+  G4double betaCM = sqrt(1. - 1./gammaCM/gammaCM);
 
-  G4double lim[iMax] = { 0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0 };
+  G4double Ep1 = 2.0 * CLHEP::eV;
+  // // G4double Ep1 = PLANCK * 2 * pi * CC / LAMBDA;
+  // G4double E_p = PLANCK * 2 * pi * CC / LAMBDA * CLHEP::eV;
+  G4double Ep2 = Ep1 * gammaCM * (1. + betaCM);
+  G4double E_p = Ep2;
+  G4double fMinEnergyTRCM = E_p/(1. + 2 * E_p / mc2);
+  G4double fMaxEnergyTRCM = E_p;
+  G4PhysicsLinearVector* energyVectorCM =
+      new G4PhysicsLinearVector(fMinEnergyTRCM, fMaxEnergyTRCM, fBinTR);
+  G4double E_g = energyVectorCM->GetLowEdgeEnergy(index);
+  G4double sz2 = 1. - mc2/E_g + mc2/E_p;
 
-  for(i = 0; i < iMax; ++i)
-    lim[i] *= fMaxThetaTR;
 
-  G4Integrator<G4InverseCompton, G4double (G4InverseCompton::*)(G4double)>
-    integral;
+  // E_g = E_g*gammaCM*(1. + betaCM*sz2);
 
-  fEnergy = energy;
-  {
-    for(i = 0; i < iMax - 1; ++i)
-    {
-      angleSum += integral.Legendre96(
-        this, &G4InverseCompton::SpectralAngleXTRdEdx, lim[i], lim[i + 1]);
-    }
-  }
-  return angleSum;
-  // закомментировать то что выше и возвращать гаусса
+  G4double f = ( (mc2/E_p-mc2/E_g) * (mc2/E_p-mc2/E_g) + 2.0 * (mc2/E_p-mc2/E_g) + E_p/E_g + E_g/E_p ) / (2.0 + 2.0 * E_p/mc2);
+
+  return pi * r_e * r_e * mc2 / (E_p * E_p)  * (2.0 + 2 * E_p / mc2) * f;
+
 }
 
 //////////////////////////////////////////////////////////////////////////

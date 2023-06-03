@@ -28,6 +28,7 @@
 
 #include "G4Gamma.hh"
 #include "G4PhysicalConstants.hh"
+#include "G4PhysicsLinearVector.hh"
 
 ////////////////////////////////////////////////////////////////////////////
 // Constructor, destructor
@@ -60,14 +61,16 @@ void LightTarget::ProcessDescription(std::ostream& out) const
 }
 
 ///////////////////////////////////////////////////////////////////////////
-G4double LightTarget::SpectralXTRdEdx(G4double E_g)
+G4double LightTarget::SpectralXTRdEdx(G4double indexD) //G4int
 {
   // G4double CC = 2.9979 * pow(10, 10);  // cm/s
   // G4double CM = 511000 / (CC * CC);
   // G4double PLANCK = 6.58212 * pow(10, -16); // eV*s
   // G4double LAMBDA = 1.03 * pow(10, -4);  // cm
+   G4cout << "LightTarget::SpectralXTRdEdx(G4double indexD)" << G4endl;
+  G4int index = int(indexD);
   G4double mc2 = 511000.0 * CLHEP::eV;
-  G4double r_e = 2.8179403262 * pow(10, -15) * 100 * CLHEP::m; // радиус электрона
+  G4double r_e = 2.8179403262 * pow(10, -3) * 100 * CLHEP::m; // радиус электрона
   G4double gammaCM = 60;
   G4double betaCM = sqrt(1. - 1./gammaCM/gammaCM);
 
@@ -76,6 +79,11 @@ G4double LightTarget::SpectralXTRdEdx(G4double E_g)
   // G4double E_p = PLANCK * 2 * pi * CC / LAMBDA * CLHEP::eV;
   G4double Ep2 = Ep1 * gammaCM * (1. + betaCM);
   G4double E_p = Ep2;
+  G4double fMinEnergyTRCM = E_p/(1. + 2 * mc2);
+  G4double fMaxEnergyTRCM = E_p;
+  G4PhysicsLinearVector* energyVectorCM =
+      new G4PhysicsLinearVector(fMinEnergyTRCM, fMaxEnergyTRCM, fBinTR);
+  G4double E_g = energyVectorCM->GetLowEdgeEnergy(index);
   G4double sz2 = 1. - mc2/E_g + mc2/E_p;
 
 
