@@ -73,18 +73,34 @@ StackingAction::ClassifyNewTrack(const G4Track* track)
     //   = track->GetCreatorProcess()->GetProcessSubType();
     // if ( processSubType == fTransitionRadiation) {
     G4String creatorProcessName = track->GetCreatorProcess()->GetProcessName();
+    G4ThreeVector direction = track->GetMomentumDirection();
+    G4double theta  = std::acos(direction.z());
+    // G4cout << "StackingAction: " << direction.x() << " " << direction.y() << " " << direction.z() << G4endl;
     if (creatorProcessName.find("XTRadiator") != std::string::npos) {
       analysisManager->FillH1(2, energy);
+
+            // scattering angles
+      if (theta > 0.0) {
+        // analysisManager->FillH1(4, theta);
+
+        G4double dteta  = analysisManager->GetH1Width(4);
+        G4double unit   = analysisManager->GetH1Unit(4);    
+        G4double weight = unit/(6.28*std::sin(theta)*dteta);
+        weight *= (energy/CLHEP::MeV); 
+        analysisManager->FillH1(4,theta,weight);
+      }
     }
 
     // all gamma
     analysisManager->FillH1(3, energy);
+
+
   }
 
-  // e-
-  if (track->GetDefinition() == G4Electron::Electron()) {
-    analysisManager->FillH1(4, energy);
-  }
+  // // e-
+  // if (track->GetDefinition() == G4Electron::Electron()) {
+  //   analysisManager->FillH1(4, energy);
+  // }
     
   return fUrgent;
 }

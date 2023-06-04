@@ -357,19 +357,19 @@ void G4InverseCompton::BuildEnergyTable()
     for(iTR = fBinTR - 2; iTR >= 0; --iTR)
     {
       // Legendre96 or Legendre10
-      
+      energySum +=
       /* radiatorCof * fCofTR * вынести константы сюда*/
 	
 	// integral.Legendre10(this, &G4InverseCompton::SpectralXTRdEdx,
-                  //  integral.Legendre96(this, &G4InverseCompton::SpectralXTRdEdx,
+                   integral.Legendre96(this, &G4InverseCompton::SpectralXTRdEdx,
        
-                  //                      energyVector->GetLowEdgeEnergy(iTR),
-                  //                      energyVector->GetLowEdgeEnergy(iTR + 1));
+                                       energyVector->GetLowEdgeEnergy(iTR),
+                                       energyVector->GetLowEdgeEnergy(iTR + 1));
 
-      G4double energy = energyVector->GetLowEdgeEnergy(iTR);
-      G4double energyNext = energyVector->GetLowEdgeEnergy(iTR + 1);
+      // G4double energy = energyVector->GetLowEdgeEnergy(iTR);
+      // G4double energyNext = energyVector->GetLowEdgeEnergy(iTR + 1);
       
-      energySum += G4InverseCompton::SpectralXTRdEdx(iTR) * (energyNext - energy);
+      // energySum += G4InverseCompton::SpectralXTRdEdx(energy) * (energyNext - energy);
       G4cout << "energySum=" << energySum << G4endl;
       energyVector->PutValue(iTR, energySum / fTotalDist);
     }
@@ -800,23 +800,39 @@ G4VParticleChange* G4InverseCompton::PostStepDoIt(const G4Track& aTrack,
       else
       // theta = std::fabs(G4RandGauss::shoot(0.0, pi / gamma));
       {
+        G4double mc2 = 511000.0 * CLHEP::eV;
         G4double gammaCM = 60;
         G4double betaCM = sqrt(1. - 1./gammaCM/gammaCM);
-        G4double Ep1 = 2.0 * CLHEP::eV;
-        G4double Ep2 = Ep1 * gammaCM * (1. + betaCM);
-        G4double E_p = Ep2;
-        G4double E_g = energyTR;
-        theta = pi - acos((E_p/E_g*(1. + betaCM) - 1.) / betaCM);
+        // G4double Ep1 = 2.0 * CLHEP::eV;
+        // G4double Ep2 = Ep1 * gammaCM * (1. + betaCM);
+        // G4double E_p = Ep2;
+        // G4double E_g = energyTR;
+        // theta = pi - acos((E_p/E_g*(1. + betaCM) - 1.) / betaCM);
+
+
+        G4double E_p_lab = 2.0 * CLHEP::eV;
+        G4double E_pCM = E_p_lab * gammaCM * (1. + betaCM);
+        G4double E_gCM = (energyTR/gammaCM + betaCM * mc2)/(1 + betaCM + betaCM*mc2/E_pCM);
+        G4double sz2 = 1. - mc2/E_gCM + mc2/E_pCM;
+        if (sz2 > 1.0)
+          sz2 = 1.0;
+
+        theta = acos(sz2);
+        G4cout << "sz2: " << sz2 << " theta: " << theta << G4endl;
       }
 
-      if(theta >= 0.1)
-        theta = 0.1;
+
+      // if(theta >= 0.1)
+      //   theta = 0.1;
 
       phi = twopi * G4UniformRand();
 
       dirX = std::sin(theta) * std::cos(phi);
       dirY = std::sin(theta) * std::sin(phi);
       dirZ = std::cos(theta);
+
+      // G4cout << "PostStepDoIt: " << dirX << " " << dirY << " " << dirZ << G4endl;
+
 
       G4ThreeVector directionTR(dirX, dirY, dirZ);
       directionTR.rotateUz(direction);
@@ -889,14 +905,14 @@ G4double G4InverseCompton::SpectralAngleXTRdEdx(G4double varAngle)
 
 /////////////////////////////////////////////////////////////////////////
 // For second integration over energy
-G4double G4InverseCompton::SpectralXTRdEdx(G4double indexD) //G4int
+G4double G4InverseCompton::SpectralXTRdEdx(G4double energy)
 {
   // G4double CC = 2.9979 * pow(10, 10);  // cm/s
   // G4double CM = 511000 / (CC * CC);
   // G4double PLANCK = 6.58212 * pow(10, -16); // eV*s
   // G4double LAMBDA = 1.03 * pow(10, -4);  // cm
-   G4cout << "LightTarget::SpectralXTRdEdx(G4double indexD)" << G4endl;
-  G4int index = int(indexD);
+  // G4cout << "G4InverseCompton::SpectralXTRdEdx(G4double indexD)" << G4endl;
+  // G4int index = int(indexD);
   G4double mc2 = 511000.0 * CLHEP::eV;
   G4double r_e = 2.8179403262 * pow(10, -6) * CLHEP::m; // радиус электрона
   G4double gammaCM = 60;
@@ -907,12 +923,13 @@ G4double G4InverseCompton::SpectralXTRdEdx(G4double indexD) //G4int
   // G4double E_p = PLANCK * 2 * pi * CC / LAMBDA * CLHEP::eV;
   G4double Ep2 = Ep1 * gammaCM * (1. + betaCM);
   G4double E_p = Ep2;
-  G4double fMinEnergyTRCM = E_p/(1. + 2 * E_p / mc2);
-  G4double fMaxEnergyTRCM = E_p;
-  G4PhysicsLinearVector* energyVectorCM =
-      new G4PhysicsLinearVector(fMinEnergyTRCM, fMaxEnergyTRCM, fBinTR);
-  G4double E_g = energyVectorCM->GetLowEdgeEnergy(index);
-  G4double sz2 = 1. - mc2/E_g + mc2/E_p;
+  // G4double fMinEnergyTRCM = E_p/(1. + 2 * E_p / mc2);
+  // G4double fMaxEnergyTRCM = E_p;
+  // G4PhysicsLinearVector* energyVectorCM =
+  //     new G4PhysicsLinearVector(fMinEnergyTRCM, fMaxEnergyTRCM, fBinTR);
+  // G4double E_g = energyVectorCM->GetLowEdgeEnergy(index);
+  // G4double sz2 = 1. - mc2/E_g + mc2/E_p;
+  G4double E_g = (energy/gammaCM + betaCM * mc2)/(1 + betaCM + betaCM*mc2/E_p);
 
 
   // E_g = E_g*gammaCM*(1. + betaCM*sz2);

@@ -79,9 +79,9 @@ void RunAction::BookHisto()
                 { "1",  "2", "3", "4", "5"};
   const G4String title[] = 
                 { "Edep",                      // 1
-                  "XTR Gamma spectrum",        // 2
+                  "Scattered photon Gamma spectrum",        // 2
                   "Secondary Gamma spectrum" , // 3
-                  "Secondary e- spectrum",     // 4
+                  "Angular distribution",     // 4
                   "Edep.old"};                 // 5
    // Default values (to be reset via /analysis/h1/set command)               
   G4int nbins = 100;
